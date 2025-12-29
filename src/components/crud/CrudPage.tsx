@@ -16,19 +16,6 @@ import {
   DialogFooter,
 } from '../ui/dialog';
 
-/**
- * Props:
- * - title
- * - columns
- * - data
- * - loading
- * - renderForm
- * - getNewItem
- * - onCreate
- * - onUpdate
- * - onDelete
- * - pagination?: { page, totalPages, onPageChange }
- */
 export function CrudPage({
   title,
   columns,
@@ -62,7 +49,7 @@ export function CrudPage({
   async function handleSave() {
     if (!editingItem) return;
 
-    if (editingItem.id || editingItem.ticket) {
+    if (editingItem.id || editingItem.ticket || editingItem.email) {
       await onUpdate?.(editingItem);
     } else {
       await onCreate?.(editingItem);
@@ -186,7 +173,7 @@ export function CrudPage({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingItem?.id || editingItem?.ticket ? 'Editar' : 'Novo'}
+              {editingItem?.id || editingItem?.ticket || editingItem?.email ? 'Editar' : 'Novo'}
             </DialogTitle>
           </DialogHeader>
 

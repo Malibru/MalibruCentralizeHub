@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+
 import { Lock, User, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 
@@ -12,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -19,26 +22,27 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (!username.trim() || !password.trim()) {
       setError('Por favor, preencha todos os campos');
       return;
     }
 
     setIsLoading(true);
-    
+
     const result = await login(username, password);
-    
+
     if (result.success) {
       toast({
-        title: "Login realizado com sucesso!",
+        title: 'Login realizado com sucesso!',
         description: `Bem-vindo, ${username}!`,
       });
+
       navigate('/');
     } else {
-      setError(result.error || 'Não foi possível realizar o login')
+      setError(result.error || 'Usuário ou senha inválidos');
     }
-    
+
     setIsLoading(false);
   };
 
@@ -46,14 +50,20 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
       <div className="w-full max-w-md animate-fade-in">
         <div className="bg-card rounded-2xl shadow-lg border border-border p-8">
+          {/* HEADER */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
               <Lock className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">MALIBRU CENTRALIZE</h1>
-            <p className="text-muted-foreground mt-2">Faça login para continuar</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              MALIBRU CENTRALIZE
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Faça login para continuar
+            </p>
           </div>
 
+          {/* FORM */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm animate-fade-in">
@@ -62,6 +72,7 @@ export default function Login() {
               </div>
             )}
 
+            {/* USUÁRIO */}
             <div className="space-y-2">
               <Label htmlFor="username">Usuário</Label>
               <div className="relative">
@@ -78,6 +89,7 @@ export default function Login() {
               </div>
             </div>
 
+            {/* SENHA */}
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
@@ -94,6 +106,7 @@ export default function Login() {
               </div>
             </div>
 
+            {/* BOTÃO */}
             <Button
               type="submit"
               className="w-full h-11"
@@ -104,6 +117,7 @@ export default function Login() {
           </form>
         </div>
 
+        {/* FOOTER */}
         <p className="text-center text-sm text-muted-foreground mt-6">
           © 2024 Malibru Centralize. Todos os direitos reservados.
         </p>

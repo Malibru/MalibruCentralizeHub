@@ -27,6 +27,12 @@ async function request(url, options = {}) {
     if (response.status === 403) {
       throw new Error('Acesso negado (403)');
     }
+    if (response.status === 404) {
+      throw new Error('Recurso não encontrado (404)');
+    }
+    if (response.status === 500) {
+      throw new Error('Erro no servidor (500)');
+    }
     const error = await response.text();
     throw new Error(error || 'Erro na requisição');
   }

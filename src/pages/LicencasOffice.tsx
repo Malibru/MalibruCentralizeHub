@@ -4,6 +4,7 @@ import { CrudPage } from '../components/crud/CrudPage';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { Eye, EyeOff } from 'lucide-react';
 
 import {
   listarLicencasPaginado,
@@ -39,40 +40,64 @@ const columns = [
   },
 ];
 
-const renderForm = (formData, onChange) => (
-  <div className="space-y-4">
-    <div className="space-y-2">
-      <Label>Nome</Label>
-      <Input
-        value={formData.nome || ''}
-        onChange={(e) => onChange('nome', e.target.value)}
-      />
-    </div>
+const RenderForm = ({ formData, onChange }) => {
+  const [showPassword, setShowPassword] = useState(false);
 
-    <div className="space-y-2">
-      <Label>E-mail</Label>
-      <Input
-        type="email"
-        value={formData.email || ''}
-        onChange={(e) => onChange('email', e.target.value)}
-      />
-    </div>
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Nome</Label>
+        <Input
+          value={formData.nome || ''}
+          onChange={(e) => onChange('nome', e.target.value)}
+        />
+      </div>
 
-    <div className="space-y-2">
-      <Label>Data de Vencimento</Label>
-      <Input
-        type="date"
-        value={formData.dataVencimento || ''}
-        onChange={(e) => onChange('dataVencimento', e.target.value)}
-      />
+      <div className="space-y-2">
+        <Label>E-mail</Label>
+        <Input
+          type="email"
+          value={formData.email || ''}
+          onChange={(e) => onChange('email', e.target.value)}
+        />
+      </div>
+
+      {/* SENHA */}
+      <div className="space-y-2">
+        <Label>Senha</Label>
+        <div className="flex gap-2">
+          <Input
+            type={showPassword ? 'text' : 'password'}
+            value={formData.senha || ''}
+            onChange={(e) => onChange('senha', e.target.value)}
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            className="px-3 border rounded"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Data de Vencimento</Label>
+        <Input
+          type="date"
+          value={formData.dataVencimento || ''}
+          onChange={(e) => onChange('dataVencimento', e.target.value)}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const getNewItem = () => ({
   nome: '',
   email: '',
-  senha: '123456', // backend exige
+  senha: '', 
   dataVencimento: '',
 });
 
@@ -100,10 +125,17 @@ export default function LicencasOffice() {
     }
   }
 
-  async function onCreate(item) {
+async function onCreate(item) {
+  try {
     await cadastrarLicenca(item);
     await carregarLicencas();
+    alert('Licença cadastrada com sucesso');
+  } catch (e) {
+    alert(e.message);
+    console.error(e);
   }
+}
+
 
   async function onUpdate(item) {
     await atualizarLicenca(item.email, item);
@@ -122,7 +154,9 @@ export default function LicencasOffice() {
         columns={columns}
         data={data}
         loading={loading}
-        renderForm={renderForm}
+        renderForm={(formData, onChange) => (
+          <RenderForm formData={formData} onChange={onChange} />
+            )}
         getNewItem={getNewItem}
         onCreate={onCreate}
         onUpdate={onUpdate}

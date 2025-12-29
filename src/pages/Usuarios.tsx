@@ -1,100 +1,183 @@
+import { useEffect, useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { CrudPage } from '../components/crud/CrudPage';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 
+import {
+  listarUsuariosPaginado,
+  cadastrarUsuario,
+  atualizarUsuario,
+  deletarUsuario,
+} from '../services/UsuariosServices';
+
+/* =======================
+   COLUNAS
+======================= */
 const columns = [
   { key: 'nome', label: 'Nome' },
   { key: 'email', label: 'E-mail' },
-  { key: 'departamento', label: 'Departamento' },
-  { key: 'cargo', label: 'Cargo' },
-  { 
-    key: 'status', 
-    label: 'Status',
+  {
+    key: 'login',
+    label: 'Login',
+  },
+  {
+    key: 'departamento',
+    label: 'Departamento',
+    render: (_, row) => row.departamento?.nome || '',
+  },
+  {
+    key: 'role',
+    label: 'Perfil',
     render: (value) => (
-      <Badge variant={value === 'Ativo' ? 'default' : 'secondary'}>
+      <Badge variant={value === 'ADMIN' ? 'destructive' : 'default'}>
         {value}
       </Badge>
-    )
+    ),
   },
 ];
 
-const initialData = [
-  { id: '1', nome: 'João Silva', email: 'joao@malibru.com', departamento: 'TI', cargo: 'Analista de Sistemas', status: 'Ativo' },
-  { id: '2', nome: 'Maria Santos', email: 'maria@malibru.com', departamento: 'RH', cargo: 'Analista de RH', status: 'Ativo' },
-  { id: '3', nome: 'Carlos Oliveira', email: 'carlos@malibru.com', departamento: 'Financeiro', cargo: 'Contador', status: 'Inativo' },
-  { id: '4', nome: 'Ana Costa', email: 'ana@malibru.com', departamento: 'TI', cargo: 'Desenvolvedora', status: 'Ativo' },
-];
-
+/* =======================
+   FORMULÁRIO
+======================= */
 const renderForm = (formData, onChange) => (
   <div className="space-y-4">
-    <div className="space-y-2">
-      <Label htmlFor="nome">Nome</Label>
+    <div>
+      <Label>Nome</Label>
       <Input
-        id="nome"
         value={formData.nome || ''}
         onChange={(e) => onChange('nome', e.target.value)}
-        placeholder="Nome completo"
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="email">E-mail</Label>
+
+    <div>
+      <Label>Email</Label>
       <Input
-        id="email"
         type="email"
         value={formData.email || ''}
         onChange={(e) => onChange('email', e.target.value)}
-        placeholder="email@malibru.com"
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="departamento">Departamento</Label>
+
+    <div>
+      <Label>Login</Label>
       <Input
-        id="departamento"
-        value={formData.departamento || ''}
-        onChange={(e) => onChange('departamento', e.target.value)}
-        placeholder="Departamento"
+        value={formData.login || ''}
+        onChange={(e) => onChange('login', e.target.value)}
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="cargo">Cargo</Label>
+
+    <div>
+      <Label>Senha</Label>
       <Input
-        id="cargo"
-        value={formData.cargo || ''}
-        onChange={(e) => onChange('cargo', e.target.value)}
-        placeholder="Cargo"
+        type="password"
+        value={formData.senha || ''}
+        onChange={(e) => onChange('senha', e.target.value)}
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="status">Status</Label>
+
+    <div>
+      <Label>ID do Departamento</Label>
       <Input
-        id="status"
-        value={formData.status || ''}
-        onChange={(e) => onChange('status', e.target.value)}
-        placeholder="Ativo ou Inativo"
+        type="number"
+        value={formData.departamentoId || ''}
+        onChange={(e) => onChange('departamentoId', e.target.value)}
+      />
+    </div>
+
+    <div>
+      <Label>ID da Licença Office</Label>
+      <Input
+        type="number"
+        value={formData.licencaOfficeId || ''}
+        onChange={(e) => onChange('licencaOfficeId', e.target.value)}
+      />
+    </div>
+
+    <div>
+      <Label>Role</Label>
+      <Input
+        value={formData.role || 'USER'}
+        onChange={(e) => onChange('role', e.target.value)}
+        placeholder="ADMIN / USER"
       />
     </div>
   </div>
 );
 
+/* =======================
+   NOVO ITEM
+======================= */
 const getNewItem = () => ({
   nome: '',
   email: '',
-  departamento: '',
-  cargo: '',
-  status: 'Ativo'
+  login: '',
+  senha: '',
+  departamentoId: '',
+  licencaOfficeId: '',
+  role: 'USER',
 });
 
+/* =======================
+   COMPONENTE
+======================= */
 export default function Usuarios() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  useEffect(() => {
+    carregarUsuarios();
+  }, [page]);
+
+  async function carregarUsuarios() {
+    try {
+      setLoading(true);
+      const res = await listarUsuariosPaginado(page, 10);
+      setData(res.content);
+      setTotalPages(res.totalPages);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onCreate(item) {
+    await cadastrarUsuario(item);
+    await carregarUsuarios();
+  }
+
+  async function onUpdate(item) {
+    await atualizarUsuario(item.id, item);
+    await carregarUsuarios();
+  }
+
+  async function onDelete(item) {
+    await deletarUsuario(item.login);
+    await carregarUsuarios();
+  }
+
   return (
     <MainLayout>
       <CrudPage
         title="Usuários"
         columns={columns}
-        initialData={initialData}
+        data={data}
+        loading={loading}
         renderForm={renderForm}
         getNewItem={getNewItem}
+        onCreate={onCreate}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        pagination={{
+          page,
+          totalPages,
+          onPageChange: setPage,
+        }}
       />
     </MainLayout>
   );

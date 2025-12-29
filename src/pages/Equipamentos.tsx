@@ -1,99 +1,158 @@
+import { useEffect, useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { CrudPage } from '../components/crud/CrudPage';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 
+import {
+  listarEquipamentosPaginado,
+  cadastrarEquipamento,
+  atualizarEquipamento,
+  deletarEquipamento,
+} from '../services/EquipamentosServices';
+
+/* =======================
+   COLUNAS
+======================= */
 const columns = [
-  { key: 'patrimonio', label: 'Patrimônio' },
-  { key: 'tipo', label: 'Tipo' },
-  { key: 'modelo', label: 'Modelo' },
-  { key: 'usuario', label: 'Usuário' },
-  { 
-    key: 'status', 
-    label: 'Status',
+  { key: 'nome', label: 'Nome' },
+  { key: 'numeroSerie', label: 'Nº Série' },
+  { key: 'descricao', label: 'Descrição' },
+  { key: 'quantidade', label: 'Quantidade' },
+  {
+    key: 'disponivel',
+    label: 'Disponível',
     render: (value) => (
-      <Badge variant={value === 'Em uso' ? 'default' : value === 'Disponível' ? 'secondary' : 'destructive'}>
-        {value}
+      <Badge variant={value ? 'default' : 'destructive'}>
+        {value ? 'Sim' : 'Não'}
       </Badge>
-    )
+    ),
   },
 ];
 
-const initialData = [
-  { id: '1', patrimonio: 'NB-001', tipo: 'Notebook', modelo: 'Dell Latitude 5520', usuario: 'João Silva', status: 'Em uso' },
-  { id: '2', patrimonio: 'DT-015', tipo: 'Desktop', modelo: 'HP ProDesk 400', usuario: '-', status: 'Disponível' },
-  { id: '3', patrimonio: 'MN-008', tipo: 'Monitor', modelo: 'LG 24"', usuario: 'Maria Santos', status: 'Em uso' },
-  { id: '4', patrimonio: 'NB-022', tipo: 'Notebook', modelo: 'Lenovo ThinkPad', usuario: '-', status: 'Manutenção' },
-];
-
+/* =======================
+   FORMULÁRIO
+======================= */
 const renderForm = (formData, onChange) => (
   <div className="space-y-4">
-    <div className="space-y-2">
-      <Label htmlFor="patrimonio">Patrimônio</Label>
+    <div>
+      <Label>Nome</Label>
       <Input
-        id="patrimonio"
-        value={formData.patrimonio || ''}
-        onChange={(e) => onChange('patrimonio', e.target.value)}
-        placeholder="Código do patrimônio"
+        value={formData.nome || ''}
+        onChange={(e) => onChange('nome', e.target.value)}
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="tipo">Tipo</Label>
+
+    <div>
+      <Label>Número de Série</Label>
       <Input
-        id="tipo"
-        value={formData.tipo || ''}
-        onChange={(e) => onChange('tipo', e.target.value)}
-        placeholder="Tipo do equipamento"
+        value={formData.numeroSerie || ''}
+        onChange={(e) => onChange('numeroSerie', e.target.value)}
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="modelo">Modelo</Label>
+
+    <div>
+      <Label>Descrição</Label>
       <Input
-        id="modelo"
-        value={formData.modelo || ''}
-        onChange={(e) => onChange('modelo', e.target.value)}
-        placeholder="Modelo do equipamento"
+        value={formData.descricao || ''}
+        onChange={(e) => onChange('descricao', e.target.value)}
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="usuario">Usuário</Label>
+
+    <div>
+      <Label>Quantidade</Label>
       <Input
-        id="usuario"
-        value={formData.usuario || ''}
-        onChange={(e) => onChange('usuario', e.target.value)}
-        placeholder="Usuário responsável"
+        type="number"
+        value={formData.quantidade || ''}
+        onChange={(e) => onChange('quantidade', e.target.value)}
       />
     </div>
-    <div className="space-y-2">
-      <Label htmlFor="status">Status</Label>
-      <Input
-        id="status"
-        value={formData.status || ''}
-        onChange={(e) => onChange('status', e.target.value)}
-        placeholder="Em uso, Disponível ou Manutenção"
-      />
+
+    <div>
+      <Label>Disponível</Label>
+      <select
+        className="w-full border rounded px-2 py-1"
+        value={formData.disponivel ?? true}
+        onChange={(e) => onChange('disponivel', e.target.value === 'true')}
+      >
+        <option value="true">Sim</option>
+        <option value="false">Não</option>
+      </select>
     </div>
   </div>
 );
 
+/* =======================
+   NOVO ITEM
+======================= */
 const getNewItem = () => ({
-  patrimonio: '',
-  tipo: '',
-  modelo: '',
-  usuario: '',
-  status: 'Disponível'
+  nome: '',
+  descricao: '',
+  quantidade: 1,
+  numeroSerie: '',
+  disponivel: true,
 });
 
+/* =======================
+   COMPONENTE
+======================= */
 export default function Equipamentos() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  useEffect(() => {
+    carregarEquipamentos();
+  }, [page]);
+
+  async function carregarEquipamentos() {
+    try {
+      setLoading(true);
+      const res = await listarEquipamentosPaginado(page, 10);
+      setData(res.content);
+      setTotalPages(res.totalPages);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onCreate(item) {
+    await cadastrarEquipamento(item);
+    await carregarEquipamentos();
+  }
+
+  async function onUpdate(item) {
+    await atualizarEquipamento(item.nome, item);
+    await carregarEquipamentos();
+  }
+
+  async function onDelete(item) {
+    await deletarEquipamento(item.nome);
+    await carregarEquipamentos();
+  }
+
   return (
     <MainLayout>
       <CrudPage
         title="Equipamentos"
         columns={columns}
-        initialData={initialData}
+        data={data}
+        loading={loading}
         renderForm={renderForm}
         getNewItem={getNewItem}
+        onCreate={onCreate}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        pagination={{
+          page,
+          totalPages,
+          onPageChange: setPage,
+        }}
       />
     </MainLayout>
   );

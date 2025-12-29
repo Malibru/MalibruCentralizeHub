@@ -1,99 +1,137 @@
+import { useEffect, useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { CrudPage } from '../components/crud/CrudPage';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 
-const columns = [
-  { key: 'email', label: 'E-mail' },
-  { key: 'produto', label: 'Produto' },
-  { key: 'usuario', label: 'Usuário' },
-  { key: 'validade', label: 'Validade' },
-  { 
-    key: 'status', 
-    label: 'Status',
-    render: (value) => (
-      <Badge variant={value === 'Ativa' ? 'default' : 'destructive'}>
-        {value}
-      </Badge>
-    )
-  },
-];
+import {
+  listarLicencasPaginado,
+  cadastrarLicenca,
+  atualizarLicenca,
+  deletarLicenca,
+} from '../services/LicencasOfficesServices';
 
-const initialData = [
-  { id: '1', email: 'joao@malibru.com', produto: 'Microsoft 365 Business', usuario: 'João Silva', validade: '2025-12-31', status: 'Ativa' },
-  { id: '2', email: 'maria@malibru.com', produto: 'Microsoft 365 Business', usuario: 'Maria Santos', validade: '2025-12-31', status: 'Ativa' },
-  { id: '3', email: 'carlos@malibru.com', produto: 'Microsoft 365 Enterprise', usuario: 'Carlos Oliveira', validade: '2024-06-30', status: 'Expirada' },
+/* =======================
+   COLUNAS
+======================= */
+const columns = [
+  { key: 'nome', label: 'Nome' },
+  { key: 'email', label: 'E-mail' },
+  {
+    key: 'dataVencimento',
+    label: 'Vencimento',
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (_, row) => {
+      const hoje = new Date();
+      const venc = new Date(row.dataVencimento.split('-').reverse().join('-'));
+      const ativo = venc >= hoje;
+
+      return (
+        <Badge variant={ativo ? 'default' : 'destructive'}>
+          {ativo ? 'Ativa' : 'Expirada'}
+        </Badge>
+      );
+    },
+  },
 ];
 
 const renderForm = (formData, onChange) => (
   <div className="space-y-4">
     <div className="space-y-2">
-      <Label htmlFor="email">E-mail</Label>
+      <Label>Nome</Label>
       <Input
-        id="email"
+        value={formData.nome || ''}
+        onChange={(e) => onChange('nome', e.target.value)}
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label>E-mail</Label>
+      <Input
         type="email"
         value={formData.email || ''}
         onChange={(e) => onChange('email', e.target.value)}
-        placeholder="email@malibru.com"
       />
     </div>
+
     <div className="space-y-2">
-      <Label htmlFor="produto">Produto</Label>
+      <Label>Data de Vencimento</Label>
       <Input
-        id="produto"
-        value={formData.produto || ''}
-        onChange={(e) => onChange('produto', e.target.value)}
-        placeholder="Microsoft 365 Business"
-      />
-    </div>
-    <div className="space-y-2">
-      <Label htmlFor="usuario">Usuário</Label>
-      <Input
-        id="usuario"
-        value={formData.usuario || ''}
-        onChange={(e) => onChange('usuario', e.target.value)}
-        placeholder="Nome do usuário"
-      />
-    </div>
-    <div className="space-y-2">
-      <Label htmlFor="validade">Validade</Label>
-      <Input
-        id="validade"
         type="date"
-        value={formData.validade || ''}
-        onChange={(e) => onChange('validade', e.target.value)}
-      />
-    </div>
-    <div className="space-y-2">
-      <Label htmlFor="status">Status</Label>
-      <Input
-        id="status"
-        value={formData.status || ''}
-        onChange={(e) => onChange('status', e.target.value)}
-        placeholder="Ativa ou Expirada"
+        value={formData.dataVencimento || ''}
+        onChange={(e) => onChange('dataVencimento', e.target.value)}
       />
     </div>
   </div>
 );
 
 const getNewItem = () => ({
+  nome: '',
   email: '',
-  produto: '',
-  usuario: '',
-  validade: '',
-  status: 'Ativa'
+  senha: '123456', // backend exige
+  dataVencimento: '',
 });
 
 export default function LicencasOffice() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  useEffect(() => {
+    carregarLicencas();
+  }, [page]);
+
+  async function carregarLicencas() {
+    try {
+      setLoading(true);
+      const res = await listarLicencasPaginado(page, 10);
+      setData(res.content);
+      setTotalPages(res.totalPages);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onCreate(item) {
+    await cadastrarLicenca(item);
+    await carregarLicencas();
+  }
+
+  async function onUpdate(item) {
+    await atualizarLicenca(item.email, item);
+    await carregarLicencas();
+  }
+
+  async function onDelete(item) {
+    await deletarLicenca(item.email);
+    await carregarLicencas();
+  }
+
   return (
     <MainLayout>
       <CrudPage
         title="Licenças Office"
         columns={columns}
-        initialData={initialData}
+        data={data}
+        loading={loading}
         renderForm={renderForm}
         getNewItem={getNewItem}
+        onCreate={onCreate}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        pagination={{
+          page,
+          totalPages,
+          onPageChange: setPage,
+        }}
       />
     </MainLayout>
   );

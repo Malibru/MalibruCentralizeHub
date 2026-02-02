@@ -1,9 +1,9 @@
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 
-export function Header() {
+export function Header({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +19,14 @@ export function Header() {
   return (
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
       <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onOpenMenu}
+          className="md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
         <h1 className="text-xl font-bold text-primary">MALIBRU CENTRALIZE</h1>
       </div>
       

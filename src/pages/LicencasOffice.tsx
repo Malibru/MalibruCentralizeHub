@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { parse, format } from 'date-fns';
 import { MainLayout } from '../components/layout/MainLayout';
 import { CrudPage } from '../components/crud/CrudPage';
 import { Input } from '../components/ui/input';
@@ -22,14 +23,46 @@ const columns = [
   {
     key: 'dataVencimento',
     label: 'Vencimento',
+    render: (_, row) => {
+      try {
+        const d1 = parse(row.dataVencimento, 'dd-MM-yyyy', new Date());
+        if (!isNaN(d1.getTime())) return format(d1, 'dd/MM/yyyy');
+      } catch {}
+      try {
+        const d2 = parse(row.dataVencimento, 'yyyy-MM-dd', new Date());
+        if (!isNaN(d2.getTime())) return format(d2, 'dd/MM/yyyy');
+      } catch {}
+      try {
+        const d3 = parse(row.dataVencimento, 'dd/MM/yyyy', new Date());
+        if (!isNaN(d3.getTime())) return format(d3, 'dd/MM/yyyy');
+      } catch {}
+      return row.dataVencimento ?? '-';
+    },
   },
   {
     key: 'status',
     label: 'Status',
     render: (_, row) => {
       const hoje = new Date();
-      const venc = new Date(row.dataVencimento.split('-').reverse().join('-'));
-      const ativo = venc >= hoje;
+      function parseVencimento(str?: string) {
+        if (!str) return new Date(NaN);
+        try {
+          const d1 = parse(str, 'dd-MM-yyyy', new Date());
+          if (!isNaN(d1.getTime())) return d1;
+        } catch {}
+        try {
+          const d2 = parse(str, 'yyyy-MM-dd', new Date());
+          if (!isNaN(d2.getTime())) return d2;
+        } catch {}
+        try {
+          const d3 = parse(str, 'dd/MM/yyyy', new Date());
+          if (!isNaN(d3.getTime())) return d3;
+        } catch {}
+        const d = new Date(str);
+        return d;
+      }
+      const venc = parseVencimento(row.dataVencimento);
+      const ativo = !isNaN(venc.getTime()) && venc >= hoje;
 
       return (
         <Badge variant={ativo ? 'default' : 'destructive'}>

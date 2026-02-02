@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,6 +9,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { parse, format } from 'date-fns';
 
 type Certificado = {
   id?: number;
@@ -104,11 +106,11 @@ function useCertificados(mode: string, args: { page?: number; size?: number; sor
           });
         case 'data':
           if (!args.dataIni || !args.dataFim) throw new Error('Informe data inicial e final');
-          return httpGet<Certificado[]>(`/Listar/ListarCertificadosPorData/${args.dataIni}/${args.dataFim}`);
+          return httpGet<Certificado[]>(`/Listar/ListarCertificadosPorData/${args.dataIni.split('/').reverse().join('-')}/${args.dataFim.split('/').reverse().join('-')}`);
         case 'dataPaginado':
           if (!args.dataIni || !args.dataFim) throw new Error('Informe data inicial e final');
           return httpGet<Page<Certificado>>(
-            `/Listar/ListarCertificadosPorDataPaginado/${args.dataIni}/${args.dataFim}`,
+            `/Listar/ListarCertificadosPorDataPaginado/${args.dataIni ? args.dataIni.split('/').reverse().join('-') : ''}/${args.dataFim ? args.dataFim.split('/').reverse().join('-') : ''}`,
             { page: args.page ?? 0, size: args.size ?? 10, sort: args.sort, dir: args.dir ?? 'asc' },
           );
         case 'nome':
@@ -153,6 +155,9 @@ function useCertificados(mode: string, args: { page?: number; size?: number; sor
 export default function Certificados() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams<{ nome?: string }>();
   const [mode, setMode] = useState<'lista' | 'paginado' | 'data' | 'dataPaginado' | 'nome' | 'nomePaginado' | 'empresa' | 'empresaPaginado' | 'filtradoPaginado'>('lista');
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
@@ -201,6 +206,56 @@ export default function Certificados() {
     return [];
   }, [data]);
 
+  function toBr(dateStr?: string) {
+    if (!dateStr) return '';
+    try {
+      const d1 = parse(dateStr, 'dd-MM-yyyy', new Date());
+      if (!isNaN(d1.getTime())) return format(d1, 'dd/MM/yyyy');
+      const d2 = parse(dateStr, 'yyyy-MM-dd', new Date());
+      if (!isNaN(d2.getTime())) return format(d2, 'dd/MM/yyyy');
+    } catch {}
+    return dateStr;
+  }
+
+  function brToIso(dateBr?: string) {
+    if (!dateBr) return '';
+    try {
+      const d = parse(dateBr, 'dd/MM/yyyy', new Date());
+      if (!isNaN(d.getTime())) return format(d, 'yyyy-MM-dd');
+    } catch {}
+    return dateBr;
+  }
+
+  function brToDash(dateBr?: string) {
+    if (!dateBr) return '';
+    try {
+      const d = parse(dateBr, 'dd/MM/yyyy', new Date());
+      if (!isNaN(d.getTime())) return format(d, 'dd-MM-yyyy');
+    } catch {}
+    return dateBr;
+  }
+
+  useEffect(() => {
+    const nomeParam = params.nome ? decodeURIComponent(params.nome) : undefined;
+    if (!nomeParam) return;
+    const isEditRoute = location.pathname.startsWith('/certificados/editar/');
+    const isDeleteRoute = location.pathname.startsWith('/certificados/deletar/');
+    if (isEditRoute && rows.length > 0) {
+      const found = rows.find((r) => r.nomeCertificado === nomeParam);
+      if (found) {
+        setEditingOriginalName(found.nomeCertificado ?? '');
+        setEditingData({ ...found, dataVencimento: toBr(found.dataVencimento) });
+        setIsEditOpen(true);
+      }
+    } else if (isDeleteRoute) {
+      deleteMutation.mutate(nomeParam, {
+        onSuccess: () => {
+          navigate('/certificados', { replace: true });
+        },
+      } as any);
+    }
+  }, [params.nome, rows, location.pathname]);
+
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
@@ -225,11 +280,11 @@ export default function Certificados() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dataIni">Data Inicial</Label>
-                <Input id="dataIni" type="date" value={dataIni} onChange={(e) => setDataIni(e.target.value)} />
+                <Input id="dataIni" type="text" placeholder="dd/MM/yyyy" value={dataIni} onChange={(e) => setDataIni(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dataFim">Data Final</Label>
-                <Input id="dataFim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+                <Input id="dataFim" type="text" placeholder="dd/MM/yyyy" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome (filtro)</Label>
@@ -287,7 +342,7 @@ export default function Certificados() {
                         <TableCell>{item.id ?? '-'}</TableCell>
                         <TableCell>{item.nomeEmp ?? '-'}</TableCell>
                         <TableCell>{item.nomeCertificado ?? '-'}</TableCell>
-                        <TableCell>{item.dataVencimento ?? '-'}</TableCell>
+                        <TableCell>{toBr(item.dataVencimento) || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -295,7 +350,7 @@ export default function Certificados() {
                               size="sm"
                               onClick={() => {
                                 setEditingOriginalName(item.nomeCertificado ?? '');
-                                setEditingData({ ...item });
+                                setEditingData({ ...item, dataVencimento: toBr(item.dataVencimento) });
                                 setIsEditOpen(true);
                               }}
                               className="gap-2"
@@ -322,7 +377,15 @@ export default function Certificados() {
             )}
           </div>
         </div>
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <Dialog
+          open={isEditOpen}
+          onOpenChange={(open) => {
+            setIsEditOpen(open);
+            if (!open && location.pathname.startsWith('/certificados/editar/')) {
+              navigate('/certificados', { replace: true });
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Certificado</DialogTitle>
@@ -341,8 +404,8 @@ export default function Certificados() {
                 <Input id="edit-certificado" value={editingData.nomeCertificado ?? ''} onChange={(e) => setEditingData({ ...editingData, nomeCertificado: e.target.value })} />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="edit-vencimento">Vencimento (dd-MM-yyyy)</Label>
-                <Input id="edit-vencimento" value={editingData.dataVencimento ?? ''} onChange={(e) => setEditingData({ ...editingData, dataVencimento: e.target.value })} placeholder="dd-MM-yyyy" />
+                <Label htmlFor="edit-vencimento">Vencimento (dd/MM/yyyy)</Label>
+                <Input id="edit-vencimento" value={editingData.dataVencimento ?? ''} onChange={(e) => setEditingData({ ...editingData, dataVencimento: e.target.value })} placeholder="dd/MM/yyyy" />
               </div>
             </div>
             <DialogFooter>
@@ -357,7 +420,7 @@ export default function Certificados() {
                     id: editingData.id,
                     nomeEmp: editingData.nomeEmp,
                     nomeCertificado: editingData.nomeCertificado,
-                    dataVencimento: editingData.dataVencimento,
+                    dataVencimento: brToIso(editingData.dataVencimento),
                   };
                   if (!payload.nomeEmp || !payload.nomeCertificado || !payload.dataVencimento) {
                     toast({ title: 'Preencha todos os campos obrigatórios', description: 'Empresa, Certificado e Vencimento', variant: 'destructive' });
